@@ -26,19 +26,19 @@ def about():
 
 
 @app.route('/upload', methods=['POST', 'GET'])
-@login_required  # Ensures only logged-in users can access this route
+@login_required  
 def upload():
-    form = UploadForm()  # Instantiate the form
+    form = UploadForm() 
 
-    if form.validate_on_submit():  # Validate form submission
-        file = form.file.data  # Get file from form
-        filename = secure_filename(file.filename)  # Secure filename
+    if form.validate_on_submit():  
+        file = form.file.data  
+        filename = secure_filename(file.filename)  
 
         # Ensure the file is an image
         if filename.endswith(('.jpg', '.png')):  
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))  # Save file
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))  
             flash('File uploaded successfully!', 'success')
-            return redirect(url_for('upload'))  # Stay on upload page
+            return redirect(url_for('upload')) 
         else:
             flash('Invalid file type. Please upload a JPG or PNG.', 'danger')
 
@@ -48,21 +48,28 @@ def upload():
 @app.route('/login', methods=['POST', 'GET'])
 def login():
     form = LoginForm()
-    if form.validate_on_submit():  # Validate entire form submission
+    if form.validate_on_submit():  
         username = form.username.data
-        password = form.password.data  # Get the password entered
+        password = form.password.data  
 
-        # Query database for the user by username
+        
         user = UserProfile.query.filter_by(username=username).first()
 
-        # Check if user exists and if the password is correct
         if user and check_password_hash(user.password, password):
-            login_user(user)  # Log in the user
+            login_user(user)  
             flash('Login successful!', 'success')
-            return redirect(url_for("upload"))  # Redirect to upload route
+            return redirect(url_for("upload")) 
         else:
             flash('Invalid username or password. Please try again.', 'danger')
     return render_template("login.html", form=form)
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Log out the current user."""
+    logout_user()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('home'))  
 
 #retrieve uploaded images
 def get_uploaded_images():
