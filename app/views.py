@@ -1,12 +1,11 @@
 import os
 from app import app, db, login_manager
-from flask import render_template, request, redirect, url_for, flash, session, abort
+from flask import render_template, request, redirect, url_for, flash, session, abort, send_from_directory
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash
 from app.models import UserProfile
-from app.forms import LoginForm
-from app.forms import UploadForm
+from app.forms import LoginForm, UploadForm
 
 
 
@@ -27,13 +26,21 @@ def about():
 
 
 @app.route('/upload', methods=['POST', 'GET'])
+@login_required  # Ensures only logged-in users can access this route
 def upload():
-    form = UploadForm()  # Instantiate your form
+    form = UploadForm()  # Instantiate the form
 
-    if form.validate_on_submit():  # Validate form
-        # Get file data and save to your uploads folder
-        flash('File Saved', 'success')
-        return redirect(url_for('home'))  # Update to redirect user after upload
+    if form.validate_on_submit():  # Validate form submission
+        file = form.file.data  # Get file from form
+        filename = secure_filename(file.filename)  # Secure filename
+
+        # Ensure the file is an image
+        if filename.endswith(('.jpg', '.png')):  
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))  # Save file
+            flash('File uploaded successfully!', 'success')
+            return redirect(url_for('upload'))  # Stay on upload page
+        else:
+            flash('Invalid file type. Please upload a JPG or PNG.', 'danger')
 
     return render_template('upload.html', form=form)
 
@@ -56,6 +63,36 @@ def login():
         else:
             flash('Invalid username or password. Please try again.', 'danger')
     return render_template("login.html", form=form)
+
+#retrieve uploaded images
+def get_uploaded_images():
+    """Retrieve list of uploaded images from the upload folder."""
+    image_list = []
+    upload_folder = app.config['UPLOAD_FOLDER']
+    for _, _, files in os.walk(upload_folder):
+        for file in files:
+            if file.endswith(('.jpg', '.png')):
+                image_list.append(file)
+    return image_list
+
+# Route to serve uploaded images
+@app.route('/uploads/<filename>')
+def get_image(filename):
+    """Serve uploaded image files."""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+
+# Route to display uploaded files
+@app.route('/files')
+@login_required  
+def files():
+    """Display a list of uploaded images."""
+    images = get_uploaded_images()
+    return render_template('files.html', images=images)
+
+
+
+
 
 # user_loader callback. This callback is used to reload the user object from
 # the user ID stored in the session
